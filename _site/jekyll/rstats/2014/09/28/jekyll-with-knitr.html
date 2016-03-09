@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head prefix="dc: http://purl.org/dc/terms/ og: http://ogp.me/ns#"> <!-- namespaces used in metadata.html -->
+  <meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+  <title>Serve Jekyll Websites with servr and knitr</title>
+  <meta name="author" content="Carl Boettiger" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- HTML5 metadata -->
+<meta name="keywords" content="knitr, servr, httpuv, websocket" />
+<meta name="description" content="" />
+<!-- RDFa Metadata (in DublinCore) -->
+<meta property="dc:title" content="Serve Jekyll Websites with servr and knitr" />
+<meta property="dc:creator" content="Carl Boettiger" />
+<meta property="dc:date" content="2014-09-28 00:00:00 +0400" />
+<meta property="dc:format" content="text/html" />
+<meta property="dc:language" content="en" />
+<meta property="dc:identifier" content="/jekyll/rstats/2014/09/28/jekyll-with-knitr.html" />
+<meta property="dc:rights" content="CC0" />
+<meta property="dc:source" content="Lab Notebook" />
+<meta property="dc:subject" content="Ecology" /> 
+<meta property="dc:type" content="website" /> 
+<!-- RDFa Metadata (in OpenGraph) -->
+<meta property="og:title" content="Serve Jekyll Websites with servr and knitr" />
+<meta property="og:author" content="http://www.carlboettiger.info/index.html#me" />  <!-- Should be Liquid? URI? -->
+<meta property="http://ogp.me/ns/profile#first_name" content="Carl"/>
+<meta property="http://ogp.me/ns/profile#last_name" content="Boettiger"/>
+<meta property="http://ogp.me/ns/article#published_time" content="2014-09-28 00:00:00 +0400" />
+<meta property="og:site_name" content="Lab Notebook" /> <!-- Same as dc:source? -->
+<meta property="og:url" content="http://www.carlboettiger.info/jekyll/rstats/2014/09/28/jekyll-with-knitr.html" />
+<meta property="og:type" content="website" /> 
+<!-- Google Scholar Metadata -->
+<!--
+<meta name="citation_author" content="Carl Boettiger"/>
+<meta name="citation_date" content="2014-09-28 00:00:00 +0400"/>
+<meta name="citation_title" content="Serve Jekyll Websites with servr and knitr"/>
+<meta name="citation_journal_title" content="Lab Notebook"/>
+-->
+<!--NOTE: see also the COinS Metadata in span element in footer -->
+
+
+
+
+	<link rel="stylesheet" href="/assets/css/bootstrap.css" type="text/css"/>
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="/assets/css/academicons.css" />
+  <!-- Help the browser identify the RSS feed automatically -->
+  <link rel="alternate" type="application/rss+xml" title="Carl Boettiger's Lab Notebook" href="/blog" />
+</head>
+
+
+  <body prefix="dc: http://purl.org/dc/terms/ foaf: http://xmlns.com/foaf/0.1/"> 
+    <!-- Navbar  ================================================== -->
+
+<nav class="navbar navbar-default" role="navigation">
+  <div class="container-fluid">
+    <!-- Brand and toggle get grouped for better mobile display -->
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+        <span class="sr-only">Toggle navigation</span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="/README.html"><i class="icon-info-sign"></i></a>
+    </div>
+
+ <!-- Collect the nav links, forms, and other content for toggling -->
+    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+      <ul class="nav navbar-nav">
+
+          <li  >
+          <a href="/index.html">Home</a></li>
+          <li  >
+          <a href="/members.html">Members</a></li>
+          <li  >
+          <a href="/vita.html">Publications</a></li>
+          <li  >
+          <a href="/teaching.html">Teaching</a></li>
+          <li  >
+          <a href="/lab-notebook.html">Lab Notebook</a></li>
+
+        </ul>
+
+      <!-- Search site using Google's index -->
+        <form class="navbar-form navbar-right" role="search" method="get" action="http://google.com/search">
+          <div class="form-group">
+            <input type="hidden" name="q" value="site:carlboettiger.info" />
+            <input type="text" class="form-control search-query" name="q" placeholder="Search"/>
+          </div>
+          <button class="btn btn-mini" type="submit"><i class="icon-search"></i></button> 
+       </form>
+
+    </div><!--/.nav-collapse -->
+  </div> <!-- /container -->
+</nav>
+
+
+
+    <div class="container"> <!-- Responsive grid layout, doesn't jump to full-width --> 
+      <header>
+        <h1 class="entry-title">Serve Jekyll Websites with servr and knitr</h1>
+        <h2></h2>
+      </header>
+
+      <div class="row">
+  <div class="col-md-7 col-md-offset-1">
+    <article>
+    <p>The R package <a href="https://github.com/yihui/servr"><strong>servr</strong></a> can be used to set up an HTTP server to serve files under a directory. Since <strong>servr</strong> v0.2, it has added a function <code>servr::jekyll()</code> specifically designed for websites based on Jekyll and R Markdown. The main features of this function are:</p>
+<ol type="1">
+<li>R Markdown source files are re-compiled through <a href="http://yihui.name/knitr"><strong>knitr</strong></a> when their corresponding Markdown output files become older<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a> than source files;</li>
+<li>The web page will refresh itself automatically in the above case as well;</li>
+</ol>
+<p>As a result, all you need to do is write your blog posts (R Markdown documents), and you do not need to worry about re-building the website or calling <strong>knitr</strong> commands. Whenever you save a blog post in your text editor, the web page will be updated on the fly. This is particularly handy in the <a href="http://www.rstudio.com">RStudio IDE</a>, because after you run <code>servr::jekyll()</code> in the console, you can start writing or editing your R Markdown posts, and the HTML output, displayed in the RStudio viewer pane, will be in sync with your source post in the source panel (see the screenshot below).</p>
+<p><a href="http://i.imgur.com/gKVGhiP.png"><img src="http://i.imgur.com/gKVGhiP.png" alt="Jekyll with servr and knitr" /></a></p>
+<h2 id="prerequisites">Prerequisites</h2>
+<p>You must have installed the packages <strong>servr</strong> (&gt;= 0.2) and <strong>knitr</strong> (&gt;= 1.8).</p>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r">install.packages<span class="p">(</span><span class="kt">c</span><span class="p">(</span><span class="s">&quot;servr&quot;</span><span class="p">,</span> <span class="s">&quot;knitr&quot;</span><span class="p">),</span> repos <span class="o">=</span> <span class="s">&quot;http://cran.rstudio.com&quot;</span><span class="p">)</span></code></pre>
+</div>
+<p>Of course, you have to install <a href="http://jekyllrb.com">Jekyll</a> as well. For Windows users, you have to make sure <code>jekyll</code> can be found from your environment variable <code>PATH</code>, i.e., R can call it via <code>system('jekyll')</code>. This is normally not an issue for Linux or Mac OS X users (<code>gem install jekyll</code> is enough).</p>
+<h2 id="r-code-chunks">R code chunks</h2>
+<p>Now we write some R code chunks in this post. For example,</p>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r"><span class="kp">options</span><span class="p">(</span>digits <span class="o">=</span> <span class="m">3</span><span class="p">)</span>
+<span class="kp">cat</span><span class="p">(</span><span class="s">&quot;hello world!&quot;</span><span class="p">)</span></code></pre>
+</div>
+<div class="highlight">
+<pre><code class="language-text" data-lang="text">## hello world!</code></pre>
+</div>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r"><span class="kp">set.seed</span><span class="p">(</span><span class="m">123</span><span class="p">)</span>
+<span class="p">(</span>x <span class="o">=</span> rnorm<span class="p">(</span><span class="m">40</span><span class="p">)</span> <span class="o">+</span> <span class="m">10</span><span class="p">)</span></code></pre>
+</div>
+<div class="highlight">
+<pre><code class="language-text" data-lang="text">##  [1]  9.44  9.77 11.56 10.07 10.13 11.72 10.46  8.73  9.31  9.55 11.22
+## [12] 10.36 10.40 10.11  9.44 11.79 10.50  8.03 10.70  9.53  8.93  9.78
+## [23]  8.97  9.27  9.37  8.31 10.84 10.15  8.86 11.25 10.43  9.70 10.90
+## [34] 10.88 10.82 10.69 10.55  9.94  9.69  9.62</code></pre>
+</div>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r"><span class="c1"># generate a table</span>
+knitr<span class="o">::</span>kable<span class="p">(</span><span class="kp">head</span><span class="p">(</span>mtcars<span class="p">))</span></code></pre>
+</div>
+<table>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: right;">mpg</th>
+<th style="text-align: right;">cyl</th>
+<th style="text-align: right;">disp</th>
+<th style="text-align: right;">hp</th>
+<th style="text-align: right;">drat</th>
+<th style="text-align: right;">wt</th>
+<th style="text-align: right;">qsec</th>
+<th style="text-align: right;">vs</th>
+<th style="text-align: right;">am</th>
+<th style="text-align: right;">gear</th>
+<th style="text-align: right;">carb</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Mazda RX4</td>
+<td style="text-align: right;">21.0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">160</td>
+<td style="text-align: right;">110</td>
+<td style="text-align: right;">3.90</td>
+<td style="text-align: right;">2.62</td>
+<td style="text-align: right;">16.5</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Mazda RX4 Wag</td>
+<td style="text-align: right;">21.0</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">160</td>
+<td style="text-align: right;">110</td>
+<td style="text-align: right;">3.90</td>
+<td style="text-align: right;">2.88</td>
+<td style="text-align: right;">17.0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Datsun 710</td>
+<td style="text-align: right;">22.8</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">108</td>
+<td style="text-align: right;">93</td>
+<td style="text-align: right;">3.85</td>
+<td style="text-align: right;">2.32</td>
+<td style="text-align: right;">18.6</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hornet 4 Drive</td>
+<td style="text-align: right;">21.4</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">258</td>
+<td style="text-align: right;">110</td>
+<td style="text-align: right;">3.08</td>
+<td style="text-align: right;">3.21</td>
+<td style="text-align: right;">19.4</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Hornet Sportabout</td>
+<td style="text-align: right;">18.7</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">360</td>
+<td style="text-align: right;">175</td>
+<td style="text-align: right;">3.15</td>
+<td style="text-align: right;">3.44</td>
+<td style="text-align: right;">17.0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Valiant</td>
+<td style="text-align: right;">18.1</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">225</td>
+<td style="text-align: right;">105</td>
+<td style="text-align: right;">2.76</td>
+<td style="text-align: right;">3.46</td>
+<td style="text-align: right;">20.2</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r"><span class="p">(</span><span class="kr">function</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kr">if</span> <span class="p">(</span><span class="kc">TRUE</span><span class="p">)</span> 
+        <span class="m">1</span> <span class="o">+</span> <span class="m">1</span>  <span class="c1"># a boring comment</span>
+<span class="p">})()</span></code></pre>
+</div>
+<div class="highlight">
+<pre><code class="language-text" data-lang="text">## [1] 2</code></pre>
+</div>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r"><span class="kp">names</span><span class="p">(</span><span class="kp">formals</span><span class="p">(</span>servr<span class="o">::</span>jekyll<span class="p">))</span>  <span class="c1"># arguments of the jekyll() function</span></code></pre>
+</div>
+<div class="highlight">
+<pre><code class="language-text" data-lang="text">## [1] &quot;dir&quot;     &quot;input&quot;   &quot;output&quot;  &quot;script&quot;  &quot;serve&quot;   &quot;command&quot;
+## [7] &quot;...&quot;</code></pre>
+</div>
+<p>Just to test inline R expressions<a href="#fn2" class="footnoteRef" id="fnref2"><sup>2</sup></a> in <strong>knitr</strong>, we know the first element in <code>x</code> (created in the code chunk above) is 9.44. You can certainly draw some graphs as well:</p>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r">par<span class="p">(</span>mar <span class="o">=</span> <span class="kt">c</span><span class="p">(</span><span class="m">4</span><span class="p">,</span> <span class="m">4</span><span class="p">,</span> <span class="m">0.1</span><span class="p">,</span> <span class="m">0.1</span><span class="p">))</span>
+plot<span class="p">(</span>cars<span class="p">,</span> pch <span class="o">=</span> <span class="m">19</span><span class="p">,</span> col <span class="o">=</span> <span class="s">&quot;red&quot;</span><span class="p">)</span>  <span class="c1"># a scatterplot</span></code></pre>
+</div>
+<figure>
+<img src="http://db.yihui.name/jekyll/2014-09-28-jekyll-with-knitr/cars-1.png" alt="A scatterplot of the cars data" /><figcaption>A scatterplot of the cars data</figcaption>
+</figure>
+<h2 id="the-build-script">The build script</h2>
+<p>Zero-configuration is required for <code>servr::jekyll()</code> to work on your Jekyll website. However, there is always demand for more control over some options, which can be defined in a custom build script. Here are the arguments of <code>servr::jekyll()</code>:</p>
+<div class="highlight">
+<pre><code class="language-r" data-lang="r">jekyll<span class="p">(</span>dir <span class="o">=</span> <span class="s">&quot;.&quot;</span><span class="p">,</span> input <span class="o">=</span> <span class="kt">c</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">,</span> <span class="s">&quot;_source&quot;</span><span class="p">,</span> <span class="s">&quot;_posts&quot;</span><span class="p">),</span> output <span class="o">=</span> <span class="kt">c</span><span class="p">(</span><span class="s">&quot;.&quot;</span><span class="p">,</span> 
+    <span class="s">&quot;_posts&quot;</span><span class="p">,</span> <span class="s">&quot;_posts&quot;</span><span class="p">),</span> script <span class="o">=</span> <span class="kt">c</span><span class="p">(</span><span class="s">&quot;Makefile&quot;</span><span class="p">,</span> <span class="s">&quot;build.R&quot;</span><span class="p">),</span> serve <span class="o">=</span> <span class="kc">TRUE</span><span class="p">,</span> 
+    command <span class="o">=</span> <span class="s">&quot;jekyll build&quot;</span><span class="p">,</span> <span class="kc">...</span><span class="p">)</span></code></pre>
+</div>
+<p>By default, <code>jekyll()</code> looks for <code>.Rmd</code> files under the root directory, the <code>_source</code> directory, and the <code>_posts</code> directory of the Jekyll website. For example, if you put your R Markdown posts under <code>_source</code>, they will be compiled to the <code>_posts</code> directory<a href="#fn3" class="footnoteRef" id="fnref3"><sup>3</sup></a>.</p>
+<p>The <code>script</code> argument specifies a Makefile or an R script to be used to compile your R Markdown files. If it is a Makefile, <code>jekyll()</code> will run <code>make -q</code> to see if the site needs to be recompiled, then <code>make</code> if it does. If the script is an R script, say, named <code>build.R</code>, it is called via command line of the form</p>
+<pre><code>Rscript build.R arg1 arg2</code></pre>
+<p>See <code>?servr::jekyll</code> for more details. You can define all your <strong>knitr</strong> options and any other options in this R script. See the script <a href="https://github.com/yihui/knitr-jekyll/blob/gh-pages/build.R">build.R</a> in the knitr-jekyll repository for an example: it will automatically set up the output renderers for <strong>knitr</strong>, e.g., when the Jekyll Markdown engine is <code>kramdown</code>, this script will call <code>knitr::render_jekyll()</code> so that the code chunk output will be put inside the Liquid tag <code>{% highlight lang %} {% endhighlight %}</code>; it also sets up some <strong>knitr</strong> chunk and package options so that figures can be displayed correctly. For those who do not wish to store images in GIT (because normally they are binary files), you may check out how I host my images in Dropbox for this repository (see the code below <code>Sys.getenv('USER') == 'yihui'</code>).</p>
+<h2 id="on-the-markdown-renderers">On the Markdown renderers</h2>
+<p>Jekyll supports a number of Markdown renderers, such as kramdown, redcarpet, rdiscount, and so on. At the moment, it is a little annoying that kramdown supports LaTeX math expressions via <code>$$ math $$</code><a href="#fn4" class="footnoteRef" id="fnref4"><sup>4</sup></a>, but does not support syntax highlighting of code blocks using the three backticks syntax (you must write the awkward Liquid tags); on the other hand, redcarpet does not support LaTeX math but does support three backticks. In my opinion, all the different flavors and implementations of Markdown is the biggest problem of Markdown, since there is not an unambiguous spec for Markdown. <a href="http://commonmark.org">CommonMark</a> looks like a promising project to set up a common spec for Markdown, and <a href="http://johnmacfarlane.net/pandoc/">Pandoc</a> is a great implementation that has brought almost all the features that you may ever need in Markdown. You may find some Pandoc plugins for Jekyll by searching online. However, GitHub Pages does not support arbitrary Jekyll plugins, so you cannot just use a Pandoc plugin there, but that does not mean you cannot use Pandoc locally, nor does it mean you cannot push locally compiled HTML pages to GitHub Pages<a href="#fn5" class="footnoteRef" id="fnref5"><sup>5</sup></a>.</p>
+<p>I’d love you to <a href="https://github.com/yihui/knitr-jekyll">fork</a> this repository, make some (hopefully minor) changes, and <a href="https://github.com/yihui/knitr-jekyll/issues">let me know</a> your success of using Pandoc with Jekyll. Happy hacking, and good luck!</p>
+<section class="footnotes">
+<hr />
+<ol>
+<li id="fn1"><p>Determined by the modification time of files, i.e., <code>file.info(x)[, 'mtime']</code>.<a href="#fnref1">↩</a></p></li>
+<li id="fn2"><p>The syntax in R Markdown for inline expressions is <code>`r code`</code>, where <code>code</code> is the R expression that you want to evaluate, e.g. <code>x[1]</code>.<a href="#fnref2">↩</a></p></li>
+<li id="fn3"><p>The reason that we may need to write R Markdown posts in <code>_source</code> instead of <code>_posts</code> is that Jekyll has <a href="https://github.com/jekyll/jekyll/pull/3147">a subtle bug</a> (fixed in v2.5.3): its variable <code>site.posts</code> will count <code>.Rmd</code> files under <code>_posts</code> as well. The consequence is, if you list all the posts of your website, the post <code>_posts/yyyy-mm-dd-foo.md</code> will show up twice due to the existence of <code>_posts/yyyy-mm-dd-foo.Rmd</code>, therefore I would recommend you to put your R Markdown posts in a separate directory, such as <code>_source</code>.<a href="#fnref3">↩</a></p></li>
+<li id="fn4"><p>Unfortunately, kramdown does not support math expressions in single dollars, e.g. <code>$ \alpha $</code>.<a href="#fnref4">↩</a></p></li>
+<li id="fn5"><p>If you choose to generate your Jekyll website locally, and push the HTML files to GitHub, you will need the file <a href="https://help.github.com/articles/using-jekyll-with-pages"><code>.nojekyll</code></a> in the root directory of your website.<a href="#fnref5">↩</a></p></li>
+</ol>
+</section>
+
+    </article>
+  </div>
+  <div class="col-md-4">
+    <div class="sidebar">
+      <aside prefix="og:http://ogp.me/ns/article#">
+  <p> <i class="icon-calendar"></i>
+    <time datetime="2014-09-28 00:00:00 +0400" 
+    property="dc:created">28 Sep 2014</time></p>
+   
+
+ <br />
+
+  
+  
+  <a class="btn btn-default" rel="next" href='/jekyll/update/2014/09/28/welcome-to-jekyll.html'>next <i class="icon-chevron-right"></i></a></p>
+  
+
+  <br />
+
+  <p> <a  onclick="recordOutboundLink(this, 'Outbound Links', 'history'); 
+            return false;" 
+          class="btn btn-default" 
+          href="https://github.com/cboettig/EcologyModeling.github.io/commits/master/_posts/2014-09-28-jekyll-with-knitr.md"><i class="icon-time"></i> history</a></p>
+
+  <br />
+
+  <p><i class="icon-list"></i> Posted in 
+     
+      <a rel="dc:subject" class="category" 
+         href="/categories.html#jekyll">jekyll</a>
+    , 
+     
+      <a rel="dc:subject" class="category" 
+         href="/categories.html#rstats">rstats</a>
+    
+    </p>
+
+  <p> <i class="icon-tag"></i> tags: 
+    
+    <!-- http://schema.org/BlogPosting/keywords -->
+    <a rel="og:tag" class="tag" 
+       href="/tags.html#knitr">#knitr</a>, 
+    
+    <!-- http://schema.org/BlogPosting/keywords -->
+    <a rel="og:tag" class="tag" 
+       href="/tags.html#servr">#servr</a>, 
+    
+    <!-- http://schema.org/BlogPosting/keywords -->
+    <a rel="og:tag" class="tag" 
+       href="/tags.html#httpuv">#httpuv</a>, 
+    
+    <!-- http://schema.org/BlogPosting/keywords -->
+    <a rel="og:tag" class="tag" 
+       href="/tags.html#websocket">#websocket</a>
+    </p>
+
+  <br/>
+
+  
+
+  <br/>
+  <p><small> <i class="icon-barcode"></i> SHA Hash: <a href="https://github.com/cboettig/EcologyModeling.github.io/commit/826dfa10f3e318b2a0c3c32b6af930549581265b/_posts/2014-09-28-jekyll-with-knitr.md"> 826dfa10f3e318b2a0c3c32b6af930549581265b</a></small></p>
+    
+  <br/>
+  
+
+</aside>
+
+    </div>
+  </div>
+</div>
+
+      <!-- Disqus Comments -->
+      <div class="row disqus">
+        <div class="col-md-8">          
+            <div id="disqus_thread"></div>
+            <script type="text/javascript">
+                var disqus_shortname = 'cboettig'; // required: replace example with your forum shortname
+                /* * * DON'T EDIT BELOW THIS LINE * * */
+                (function() {
+                    var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+                    dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+                    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+                })();
+            </script>
+            <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+        </div>
+      </div>
+
+
+
+
+
+
+      <footer class="footer">
+
+<!--************** FOAF information to social networks ***************************** -->
+  <div class="row">
+    <div class="col-md-3 col-xs-4 socialicons" style="font-size:20px" typeof="foaf:Person" about="http://www.carlboettiger.info#me">
+      <p>
+          <script type="text/javascript" src="/assets/js/obfuscate-email-link.js"></script> 
+
+          <a rel="foaf:account" href="https://twitter.com/cboettig" 
+             onclick="recordOutboundLink(this, 'Outbound Links', 'Twitter'); 
+             return false;"><span class="showtooltip" title="follow me on twitter (reading, discussing)"><i class="fa fa-twitter"></i></span></a> 
+
+          <a rel="foaf:account" href="https://github.com/cboettig" 
+             onclick="recordOutboundLink(this, 'Outbound Links', 'Github'); 
+             return false;"><span class="showtooltip" title="follow me on Github (code, research)"><i class="fa fa-github"></i></span></a>
+      <!--
+          <a rel="foaf:account" href="https://plus.google.com/" 
+             onclick="recordOutboundLink(this, 'Outbound Links', 'GPlus'); 
+             return false;"><i class="fa fa-google-plus"></i></a>
+
+          <a rel="foaf:account" href="http://www.mendeley.com/profiles/carl-boettiger" 
+             onclick="recordOutboundLink(this, 'Outbound Links', 'Mendeley'); 
+             return false;"><img src="/assets/img/icon-mendeley.png" /></a> 
+
+           citations on google-scholar
+
+           stackoverflow
+      -->
+      <a rel="foaf:weblog" type="application/atom+xml" href="/blog.xml"  
+        class="showtooltip" title="RSS feeds for my blog-style entries. See the feed on my lab notebook (http://www.carlboettiger.info/atom.xml) to follow all entries instead." 
+         onclick="recordOutboundLink(this, 'Outbound Links', 'RSS'); 
+         return false;"><i class="fa fa-rss"></i></a>
+       </p>
+    </div>
+
+    
+    <!--**************** End social links **************************** -->
+
+
+    <div class="col-md-4 col-md-offset-1 col-xs-4">
+      <p><a onclick="recordOutboundLink(this, 'Outbound Links', 'ONS_claim'); return false;" href="http://onsclaims.wikispaces.com/"><img src="/assets/img/ons-aci2-icon.svg" alt="ONS" class="showtooltip" title="An Open Notebook Science (ONS) project claim: Entry provides all content (AC) immediately (I) or without significant delay.  See link for details"/></a></p>
+    </div>
+
+
+    <div class="col-md-3 col-md-offset-1 col-xs-4">
+      <p>
+      <a rel="license" property="http://creativecommons.org/ns#license" href="http://creativecommons.org/publicdomain/zero/1.0/" onclick="recordOutboundLink(this, 'Outbound Links', 'CC0'); return false;"><img src="/assets/img/cc-zero.svg" alt="CC0"/></a> 
+      </p>
+    </div>
+  </div>
+
+
+  
+<!-- COinS metadata (for citation managers like Zotero etc), goes in body text -->
+  <span
+      class="Z3988" 
+      title="ctx_ver=Z39.88-2004
+      &amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Adc
+      &amp;rfr_id=info%3Asid%2Focoins.info%3Agenerator
+      &amp;rft.title=Serve Jekyll Websites with servr and knitr
+      &amp;rft.creator=Carl Boettiger
+      &amp;rft.date=2014-09-28
+      &amp;rft.language=EN
+      &amp;rft.rights=CC0
+      &amp;rft_id=http://www.carlboettiger.info/jekyll/rstats/2014/09/28/jekyll-with-knitr.html">
+  </span>
+
+
+</footer>
+
+
+
+
+          <!-- Le javascript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+
+    <!-- JQuery, used on a few pages (still?) -->
+    <!-- <script type="text/javascript" src="/assets/js/jquery.js"></script> -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <!-- Equations using MathJax -->
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config"> MathJax.Hub.Config({ TeX: { equationNumbers: {autoNumber: "all"} } });       </script>
+    <!-- Twitter Bootstrap Javascript -->
+    <!--  <script src="/assets/js/bootstrap.min.js"></script> -->
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+
+
+    
+
+        <script type="text/javascript">
+          var _gaq = _gaq || [];
+          _gaq.push(['_setAccount', '']);
+          _gaq.push(['_trackPageview']);
+          (function() {
+            var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+            ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+            var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+          })();
+  </script>
+
+
+
+<script type="text/javascript">
+function recordOutboundLink(link, category, action) {
+  try {
+    var pageTracker=_gat._getTracker("");
+    pageTracker._trackEvent(category, action);
+    setTimeout('document.location = "' + link.href + '"', 100)
+  }catch(err){}
+}
+</script>
+
+
+
+
+    </div>
+  </body>
+</html>
+   
